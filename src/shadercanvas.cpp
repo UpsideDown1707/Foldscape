@@ -1,35 +1,11 @@
 #include "shadercanvas.hpp"
-#include "shadercodes.hpp"
 #include <iostream>
 
 namespace foldscape
-{
-	static GLuint CreateShader(int type, const GLchar* code)
-	{
-		GLuint shader = glCreateShader(type);
-		glShaderSource(shader, 1, &code, nullptr);
-		glCompileShader(shader);
-
-		int status;
-		glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-		if (!status)
-		{
-			int logLen;
-			glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
-			char* log = new char[logLen + 1];
-			glGetShaderInfoLog(shader, logLen, nullptr, log);
-			log[logLen] = '\0';
-			std::cerr << "Compile error: " << log << std::endl;
-			delete[] log;
-			glDeleteShader(shader);
-			shader = 0;
-		}
-		return shader;
-	}
-
+{	
 	void ShaderCanvas::RealizeGl()
 	{
-		if (!MakeGlCurrent())
+		if (!MakeCurrent())
 			return;
 
 		const float vertices[] = {
@@ -81,23 +57,23 @@ namespace foldscape
 			return;
 		}
 
-		m_centerLoc = glGetUniformLocation(m_program, "center");
-		m_xScaleLoc = glGetUniformLocation(m_program, "xScale");
-		m_zoomLoc = glGetUniformLocation(m_program, "zoom");
-		m_maxItersLoc = glGetUniformLocation(m_program, "maxIters");
-
 		glDetachShader(m_program, vs);
 		glDetachShader(m_program, fs);
 
 		glEnable(GL_CULL_FACE);
 		glFrontFace(GL_CW);
 		glCullFace(GL_BACK);
+
+		if (m_callbacks)
+			m_callbacks->Realize();
 	}
 
 	void ShaderCanvas::UnrealizeGl()
 	{
-		if (MakeGlCurrent())
+		if (MakeCurrent())
 		{
+			if (m_callbacks)
+				m_callbacks->Unrealize();
 			glDeleteBuffers(1, &m_vertexBuffer);
 			glDeleteProgram(m_program);
 		}
@@ -112,12 +88,16 @@ namespace foldscape
 			return FALSE;
 		}
 
+		if (m_activeImage)
+			m_activeImage->Render();
+
 		glUseProgram(m_program);
+		if (m_activeImage)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, m_activeImage->Image());
+		}
 		glBindVertexArray(m_vertexArray);
-		glUniform2d(m_centerLoc, m_params.center.real(), m_params.center.imag());
-		glUniform1d(m_xScaleLoc, m_params.xScale);
-		glUniform1d(m_zoomLoc, m_params.zoom);
-		glUniform1ui(m_maxItersLoc, m_params.maxIters);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glBindVertexArray(0);
@@ -132,74 +112,36 @@ namespace foldscape
 
 	void ShaderCanvas::Resize(ScreenLoc resolution)
 	{
-		m_resolution = resolution;
-		m_params.xScale = resolution.x / resolution.y;
-	}
-
-	bool ShaderCanvas::MakeGlCurrent()
-	{
-		GtkGLArea* gl = GTK_GL_AREA(m_glArea);
-		gtk_gl_area_make_current(gl);
-		if (GError* err = gtk_gl_area_get_error(gl))
-		{
-			std::cerr << "OpenGL error: " << err->message << std::endl;
-			return false;
-		}
-		return true;
+		if (m_activeImage)
+			m_activeImage->Resize(resolution);
 	}
 
 	void ShaderCanvas::DragBegin(ScreenLoc p)
 	{
-		m_dragTimeCenter = m_params.center;
+		if (m_activeImage)
+			m_activeImage->DragBegin(p);
 	}
 
 	void ShaderCanvas::DragUpdate(ScreenLoc p)
 	{
-		m_params.center = m_dragTimeCenter + Cpx{
-			p.x / (m_resolution.x - 1.0) * -2.0 * m_params.xScale * m_params.zoom,
-			p.y / (m_resolution.y - 1.0) * 2.0 * m_params.zoom};
-		gtk_gl_area_queue_render(GTK_GL_AREA(m_glArea));
+		if (m_activeImage)
+			m_activeImage->DragUpdate(p);
 	}
 
 	void ShaderCanvas::Zoom(double delta)
 	{
-		const Cpx zoomCenter = ToCoords(m_cursor);
-		m_params.zoom *= delta > 0 ? 1.25f : 0.8f;
-		const ScreenLoc p = ToScreen(zoomCenter);
-		m_params.center = m_params.center + Cpx{
-			(p.x - m_cursor.x) / (m_resolution.x - 1.0) * 2.0 * m_params.xScale * m_params.zoom,
-			(p.y - m_cursor.y) / (m_resolution.y - 1.0) * -2.0 * m_params.zoom};
-		gtk_gl_area_queue_render(GTK_GL_AREA(m_glArea));
+		if (m_activeImage)
+			m_activeImage->Zoom(m_cursor, delta);
 	}
 
-	Cpx ShaderCanvas::ToCoords(ScreenLoc p) const
-	{
-		return Cpx{
-			(p.x / (m_resolution.x - 1.0) * 2.0 - 1.0) * m_params.xScale * m_params.zoom + m_params.center.real(),
-			(p.y / (m_resolution.y - 1.0) * 2.0 - 1.0) * m_params.zoom + m_params.center.imag()
-		};
-	}
-
-	ScreenLoc ShaderCanvas::ToScreen(Cpx p) const
-	{
-		return ScreenLoc{
-			((p.real() - m_params.center.real()) / (m_params.xScale * m_params.zoom) + 1.0) * 0.5 * (m_resolution.x - 1.0),
-			((p.imag() - m_params.center.imag()) / m_params.zoom + 1.0) * 0.5 * (m_resolution.y - 1.0)
-		};
-	}
-
-	ShaderCanvas::ShaderCanvas()
+	ShaderCanvas::ShaderCanvas(IGlCallbacks* callbacks)
 		: m_glArea{}
+		, m_activeImage{}
+		, m_callbacks{callbacks}
 		, m_vertexArray{}
 		, m_vertexBuffer{}
 		, m_program{}
-		, m_centerLoc{}
-		, m_xScaleLoc{}
-		, m_zoomLoc{}
 		, m_cursor{}
-		, m_resolution{}
-		, m_dragTimeCenter{}
-		, m_params{{-0.5, 0.0}, 1.0, 1.25, 256}
 	{
 		m_glArea = gtk_gl_area_new();
 		gtk_gl_area_set_allowed_apis(GTK_GL_AREA(m_glArea), GDK_GL_API_GL);
@@ -244,4 +186,21 @@ namespace foldscape
 
 	ShaderCanvas::~ShaderCanvas()
 	{}
+
+	bool ShaderCanvas::MakeCurrent()
+	{
+		GtkGLArea* gl = GTK_GL_AREA(m_glArea);
+		gtk_gl_area_make_current(gl);
+		if (GError* err = gtk_gl_area_get_error(gl))
+		{
+			std::cerr << "OpenGL error: " << err->message << std::endl;
+			return false;
+		}
+		return true;
+	}
+
+	void ShaderCanvas::RequestRender()
+	{
+		gtk_gl_area_queue_render(GTK_GL_AREA(m_glArea));
+	}
 }

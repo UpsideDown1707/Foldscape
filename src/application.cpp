@@ -7,7 +7,7 @@ namespace foldscape
 		const int width = 1000;
 		const int height = 700;
 
-		m_shaderCanvas = std::make_unique<ShaderCanvas>();
+		m_shaderCanvas = std::make_unique<ShaderCanvas>(static_cast<IGlCallbacks*>(this));
 
 		GtkWidget* paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
 		gtk_paned_set_end_child(GTK_PANED(paned), m_shaderCanvas->Canvas());
@@ -20,6 +20,17 @@ namespace foldscape
 		gtk_window_set_child(GTK_WINDOW(window), paned);
 
 		gtk_window_present(GTK_WINDOW(window));
+	}
+
+	void Application::Realize()
+	{
+		m_shaderImage = std::make_unique<MandelImage>(*m_shaderCanvas);
+		m_shaderCanvas->ActiveImage(m_shaderImage.get());
+	}
+
+	void Application::Unrealize()
+	{
+		m_shaderImage.reset();
 	}
 
 	Application::Application()

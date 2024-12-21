@@ -1,28 +1,20 @@
 #include "shadercodes.hpp"
+#include <iostream>
 
-namespace foldscape::ShaderCode
+namespace foldscape
 {
-	const char VsCode[] =
+	namespace ShaderCode
+	{
+		const char CsCode[] = 
 R"(#version 460
 precision highp float;
-layout (location = 0) in vec2 inPosition;
-layout (location = 0) out vec2 fragTexcoord;
+precision highp image2D;
 
-void main()
-{
-	fragTexcoord = inPosition;
-	gl_Position = vec4(inPosition, 1, 1);
-}
-)";
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(rgba32f, binding = 0) uniform image2D img_output;
 
-	const char FsCode[] =
-R"(#version 460
-precision highp float;
-layout (location = 0) in vec2 fragTexcoord;
-layout (location = 0) out vec4 outColor;
-
+uniform vec2 resolution;
 uniform dvec2 center;
-uniform double xScale;
 uniform double zoom;
 uniform uint maxIters;
 
@@ -56,8 +48,61 @@ vec4 FractalColor(dvec2 coord)
 
 void main()
 {
-	dvec2 coord = dvec2(fragTexcoord.x * xScale, fragTexcoord.y) * zoom + center;
-	outColor = FractalColor(coord);
+	vec2 uv = vec2(float(gl_GlobalInvocationID.x), float(gl_GlobalInvocationID.y)) / (resolution - 1) * 2 - 1;
+	dvec2 coord = dvec2(uv.x * resolution.x / resolution.y, uv.y) * zoom + center;
+	vec4 color = FractalColor(coord);
+	imageStore(img_output, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), color);
 }
 )";
+
+		const char VsCode[] =
+R"(#version 460
+precision highp float;
+layout (location = 0) in vec2 inPosition;
+layout (location = 0) out vec2 fragTexcoord;
+
+void main()
+{
+	fragTexcoord = inPosition * 0.5 + 0.5;
+	gl_Position = vec4(inPosition, 1, 1);
+}
+)";
+
+		const char FsCode[] =
+R"(#version 460
+precision highp float;
+layout (location = 0) in vec2 fragTexcoord;
+layout (location = 0) out vec4 outColor;
+
+uniform sampler2D inTexture;
+
+void main()
+{
+	outColor = vec4(texture(inTexture, fragTexcoord).xyz, 1);
+}
+)";
+	}
+
+	GLuint CreateShader(int type, const char* code)
+	{
+		GLuint shader = glCreateShader(type);
+		glShaderSource(shader, 1, &code, nullptr);
+		glCompileShader(shader);
+
+		int status;
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+		if (!status)
+		{
+			int logLen;
+			glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
+			char* log = new char[logLen + 1];
+			glGetShaderInfoLog(shader, logLen, nullptr, log);
+			log[logLen] = '\0';
+			std::cerr << "Compile error: " << log << std::endl;
+			delete[] log;
+			glDeleteShader(shader);
+			shader = 0;
+		}
+		return shader;
+	}
 }
