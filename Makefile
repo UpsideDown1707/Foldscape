@@ -1,6 +1,6 @@
 CXX := g++
-CXXFLAGS := -Wall -std=c++20 -Iinc $(shell pkg-config --cflags gtk4 epoxy)
-CXXLIBS := $(shell pkg-config --libs gtk4 epoxy)
+CXXFLAGS := -Wall -std=c++20 -Iinc $(shell pkg-config --cflags gtk4)
+CXXLIBS := $(shell pkg-config --libs gtk4)
 CSHADER := glslc
 
 SRC_DIR := src

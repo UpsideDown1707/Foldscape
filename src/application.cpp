@@ -9,6 +9,7 @@ namespace foldscape
 	void Application::Activate(GtkApplication* gtkApp)
 	{
 		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape", WIDTH, HEIGHT);
+		m_mandelImage = std::make_unique<MandelImage>(*m_vulkan, WIDTH, HEIGHT);
 
 		GtkWidget* drawingArea = gtk_drawing_area_new();
 		
@@ -16,7 +17,7 @@ namespace foldscape
 			[](GtkDrawingArea*, gint width, gint height, Application* app){
 				try
 				{
-					app->m_vulkan->Resize(width, height);
+					app->m_mandelImage->Resize(width, height);
 				}
 				catch (const std::exception& ex)
 				{
@@ -39,9 +40,9 @@ namespace foldscape
 
 	void Application::Draw(cairo_t* cr, int width, int height)
 	{
-		m_vulkan->Render();
+		m_mandelImage->Render();
 
-		cairo_surface_t* surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_vulkan->MappedImage()), CAIRO_FORMAT_ARGB32, width, height, width * 4);
+		cairo_surface_t* surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_mandelImage->MappedImage()), CAIRO_FORMAT_ARGB32, width, height, width * 4);
 
 		cairo_set_source_surface(cr, surface, 0, 0);
 		cairo_paint(cr);
@@ -53,7 +54,10 @@ namespace foldscape
 	{}
 
 	Application::~Application()
-	{}
+	{
+		m_mandelImage.reset();
+		m_vulkan.reset();
+	}
 
 	int Application::Main(int argc, char* argv[])
 	{
