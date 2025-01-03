@@ -1,20 +1,19 @@
 #pragma once
 
-#include "mandelimage.hpp"
-#include "shadercanvas.hpp"
+#include "vk/vulkan.hpp"
+#include <gtk/gtk.h>
 #include <memory>
 
 namespace foldscape
 {
-	class Application : private IGlCallbacks
+	class Application
 	{
-		std::unique_ptr<ShaderCanvas> m_shaderCanvas;
-		std::unique_ptr<ShaderImage> m_shaderImage;
-
+		std::unique_ptr<vk::Vulkan> m_vulkan;
+	
 	private:
 		void Activate(GtkApplication* gtkApp);
-		virtual void Realize() override;
-		virtual void Unrealize() override;
+
+		void Draw(cairo_t* cr, int width, int height);
 
 	public:
 		Application();

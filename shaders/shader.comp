@@ -1,0 +1,19 @@
+#version 460
+
+layout(rgba8, binding = 0) uniform imageBuffer imgOut;
+
+layout(binding = 1) uniform Parameters
+{
+	ivec2 resolution;
+};
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+void main() 
+{
+	if (gl_GlobalInvocationID.x < resolution.x && gl_GlobalInvocationID.y < resolution.y)
+	{
+		int idx = int(gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * resolution.x);
+		imageStore(imgOut, idx, vec4(gl_GlobalInvocationID.x / float(resolution.x), gl_GlobalInvocationID.y / float(resolution.y), 0, 1).zyxw);
+	}
+}

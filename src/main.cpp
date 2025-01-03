@@ -23,5 +23,7 @@ int main(int argc, char* argv[])
 #ifdef DEBUG
 	AppTimer timer;
 #endif
+	if (argc)
+		foldscape::SaveProgramFolder(argv[0]);
 	return foldscape::Application().Main(argc, argv);
 }
