@@ -10,19 +10,13 @@ namespace foldscape
 	{
 		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape", WIDTH, HEIGHT);
 		m_mandelImage = std::make_unique<MandelImage>(*m_vulkan, *this, WIDTH, HEIGHT);
+		m_surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_mandelImage->MappedImage()), CAIRO_FORMAT_ARGB32, WIDTH, HEIGHT, WIDTH * 4);
 
 		m_drawingArea = gtk_drawing_area_new();
 		
 		g_signal_connect(GTK_DRAWING_AREA(m_drawingArea), "resize", G_CALLBACK(static_cast<void(*)(GtkDrawingArea*, gint, gint, Application*)>(
 			[](GtkDrawingArea*, gint width, gint height, Application* app){
-				try
-				{
-					app->m_mandelImage->Resize(width, height);
-				}
-				catch (const std::exception& ex)
-				{
-					std::cout << ex.what() << std::endl;
-				}
+				app->Resize(width, height);
 			}
 		)), this);
 		gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(m_drawingArea), static_cast<void(*)(GtkDrawingArea*, cairo_t*, int, int, gpointer)>(
@@ -60,16 +54,29 @@ namespace foldscape
 		gtk_window_present(GTK_WINDOW(window));
 	}
 
+	void Application::Resize(int width, int height)
+	{
+		try
+		{
+			if (m_surface)
+			{
+				cairo_surface_destroy(m_surface);
+				m_surface = nullptr;
+			}
+			m_mandelImage->Resize(width, height);
+			m_surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_mandelImage->MappedImage()), CAIRO_FORMAT_ARGB32, width, height, width * 4);
+		}
+		catch (const std::exception& ex)
+		{
+			std::cout << ex.what() << std::endl;
+		}
+	}
+
 	void Application::Draw(cairo_t* cr, int width, int height)
 	{
 		m_mandelImage->Render();
-
-		cairo_surface_t* surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_mandelImage->MappedImage()), CAIRO_FORMAT_ARGB32, width, height, width * 4);
-
-		cairo_set_source_surface(cr, surface, 0, 0);
+		cairo_set_source_surface(cr, m_surface, 0, 0);
 		cairo_paint(cr);
-
-		cairo_surface_destroy(surface);
 	}
 
 	void Application::DragBegin(double2 p)
@@ -98,6 +105,11 @@ namespace foldscape
 
 	Application::~Application()
 	{
+		if (m_surface)
+		{
+			cairo_surface_destroy(m_surface);
+			m_surface = nullptr;
+		}
 		m_mandelImage.reset();
 		m_vulkan.reset();
 	}
