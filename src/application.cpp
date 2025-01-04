@@ -9,11 +9,11 @@ namespace foldscape
 	void Application::Activate(GtkApplication* gtkApp)
 	{
 		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape", WIDTH, HEIGHT);
-		m_mandelImage = std::make_unique<MandelImage>(*m_vulkan, WIDTH, HEIGHT);
+		m_mandelImage = std::make_unique<MandelImage>(*m_vulkan, *this, WIDTH, HEIGHT);
 
-		GtkWidget* drawingArea = gtk_drawing_area_new();
+		m_drawingArea = gtk_drawing_area_new();
 		
-		g_signal_connect(GTK_DRAWING_AREA(drawingArea), "resize", G_CALLBACK(static_cast<void(*)(GtkDrawingArea*, gint, gint, Application*)>(
+		g_signal_connect(GTK_DRAWING_AREA(m_drawingArea), "resize", G_CALLBACK(static_cast<void(*)(GtkDrawingArea*, gint, gint, Application*)>(
 			[](GtkDrawingArea*, gint width, gint height, Application* app){
 				try
 				{
@@ -25,15 +25,37 @@ namespace foldscape
 				}
 			}
 		)), this);
-		gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(drawingArea), static_cast<void(*)(GtkDrawingArea*, cairo_t*, int, int, gpointer)>(
+		gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(m_drawingArea), static_cast<void(*)(GtkDrawingArea*, cairo_t*, int, int, gpointer)>(
 			[](GtkDrawingArea*, cairo_t* cr, int w, int h, gpointer app){
 				reinterpret_cast<Application*>(app)->Draw(cr, w, h);
 		}), this, nullptr);
 
+		GtkGesture* panDrag = gtk_gesture_drag_new();
+		g_signal_connect(panDrag, "drag-begin", G_CALLBACK(static_cast<void(*)(GtkGestureDrag*, double, double, Application*)>([](GtkGestureDrag*, double x, double y, Application* app){
+			app->DragBegin(double2{x, y});
+		})), this);
+		g_signal_connect(panDrag, "drag-update", G_CALLBACK(static_cast<void(*)(GtkGestureDrag*, double, double, Application*)>([](GtkGestureDrag* drag, double x, double y, Application* app){			
+			app->DragUpdate(double2{x, y});
+		})), this);
+		gtk_widget_add_controller(m_drawingArea, GTK_EVENT_CONTROLLER(panDrag));
+
+		GtkEventController* cursorWatcher = gtk_event_controller_motion_new();
+		g_signal_connect(cursorWatcher, "motion", G_CALLBACK(static_cast<void(*)(GtkEventControllerMotion*, double, double, Application*)>([](GtkEventControllerMotion*, double x, double y, Application* app){
+			app->CursorMotion(double2{x, y});
+		})), this);
+		gtk_widget_add_controller(m_drawingArea, cursorWatcher);
+
+		GtkEventController* zoomController = gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_VERTICAL);
+		g_signal_connect(zoomController, "scroll", G_CALLBACK(static_cast<gboolean(*)(GtkEventControllerScroll*, double, double, Application*)>([](GtkEventControllerScroll*, double, double dy, Application* app){
+			app->Zoom(dy);
+			return static_cast<gboolean>(true);
+		})), this);
+		gtk_widget_add_controller(m_drawingArea, zoomController);
+
 		GtkWidget* window = gtk_application_window_new(gtkApp);
 		gtk_window_set_title(GTK_WINDOW(window), "Foldscape");
 		gtk_window_set_default_size(GTK_WINDOW(window), WIDTH, HEIGHT);
-		gtk_window_set_child(GTK_WINDOW(window), drawingArea);
+		gtk_window_set_child(GTK_WINDOW(window), m_drawingArea);
 
 		gtk_window_present(GTK_WINDOW(window));
 	}
@@ -50,7 +72,28 @@ namespace foldscape
 		cairo_surface_destroy(surface);
 	}
 
+	void Application::DragBegin(double2 p)
+	{
+		m_mandelImage->DragBegin(p);
+	}
+	
+	void Application::DragUpdate(double2 dp)
+	{
+		m_mandelImage->DragUpdate(dp);
+	}
+
+	void Application::CursorMotion(double2 p)
+	{
+		m_mandelImage->CursorMotion(p);
+	}
+	
+	void Application::Zoom(double d)
+	{
+		m_mandelImage->Zoom(d);
+	}
+
 	Application::Application()
+		: m_drawingArea{nullptr}
 	{}
 
 	Application::~Application()
@@ -68,5 +111,10 @@ namespace foldscape
 		const int status = g_application_run(G_APPLICATION(gtkApp), argc, argv);
 		g_object_unref(gtkApp);
 		return status;
+	}
+
+	void Application::RequestRender()
+	{
+		gtk_widget_queue_draw(m_drawingArea);
 	}
 }

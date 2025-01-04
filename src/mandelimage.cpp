@@ -37,8 +37,8 @@ namespace foldscape
 
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(Parameters);
-		bufferInfo.buffer = m_parameters.Buffer();
+		bufferInfo.range = sizeof(ShaderParameters);
+		bufferInfo.buffer = m_parameterBuffer.Buffer();
 		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[1].dstBinding = 1;
 		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -49,10 +49,14 @@ namespace foldscape
 		vkUpdateDescriptorSets(m_vulkan.Device(), ARRAY_SIZE(descriptorWrites), descriptorWrites, 0, nullptr);
 	}
 
-	MandelImage::MandelImage(vk::Vulkan& vulkan, int width, int height)
+	MandelImage::MandelImage(vk::Vulkan& vulkan, IDrawContext& drawContext, int width, int height)
 		: ShaderImage(vulkan, width, height)
-		, m_parameters(vulkan, sizeof(Parameters))
+		, PanAndZoom2D(drawContext)
+		, m_parameterBuffer(vulkan, sizeof(ShaderParameters))
 	{
+		m_pzParams.center = {-0.5, 0.0};
+		m_pzParams.zoom = 1.25;
+
 		VkDescriptorSetLayoutBinding bindings[2]{};
 		bindings[0].binding = 0;
 		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
@@ -73,6 +77,7 @@ namespace foldscape
 			ClearDescriptorResources();
 			CreateDescriptorSet();
 		}
+		m_pzParams.resolution = {width, height};
 	}
 
 	void MandelImage::Render()
@@ -82,9 +87,9 @@ namespace foldscape
 		vkResetFences(m_vulkan.Device(), 1, &m_fence);
 		vkResetCommandBuffer(cmdBuffer, 0);
 
-		Parameters* params = m_parameters.MappedData<Parameters*>();
-		params->width = m_image.Width();
-		params->height = m_image.Height();
+		ShaderParameters* params = m_parameterBuffer.MappedData<ShaderParameters*>();
+		params->pzParams = m_pzParams;
+		params->maxIters = 256;
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
