@@ -38,7 +38,7 @@ namespace foldscape
 		m_drawContext.RequestRender();
 	}
 
-	void PanAndZoom2D::Zoom(double delta)
+	void PanAndZoom2D::Scroll(double delta)
 	{
 		const std::complex<double> zoomCenter = ToCoords(m_cursor);
 		m_pzParams.zoom *= delta > 0 ? 1.25f : 0.8f;

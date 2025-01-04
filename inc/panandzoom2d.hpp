@@ -1,6 +1,6 @@
 #pragma once
 
-#include "navigation.hpp"
+#include "imagecontrolbase.hpp"
 #include <complex>
 
 namespace foldscape
@@ -18,7 +18,7 @@ namespace foldscape
 		virtual void RequestRender() = 0;
 	};
 
-	class PanAndZoom2D : public Navigation
+	class PanAndZoom2D : public ImageControlBase
 	{
 		IDrawContext& m_drawContext;
 		std::complex<double> m_dragTimeCenter;
@@ -34,6 +34,6 @@ namespace foldscape
 		explicit PanAndZoom2D(IDrawContext& drawContext);
 		virtual void DragBegin(double2 p) override;
 		virtual void DragUpdate(double2 dp) override;
-		void Zoom(double delta);
+		virtual void Scroll(double delta) override;
 	};
 }

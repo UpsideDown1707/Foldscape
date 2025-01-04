@@ -31,10 +31,5 @@ namespace foldscape
 
 	public:
 		ShaderImage(vk::Vulkan& vulkan, int width, int height);
-
-		virtual void Resize(int width, int height) = 0;
-		virtual void Render() = 0;
-
-		inline void* MappedImage() const { return m_image.MappedData(); }
 	};
 }

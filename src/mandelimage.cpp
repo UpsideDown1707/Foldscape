@@ -68,6 +68,7 @@ namespace foldscape
 		bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 		CreatePipeline("shader_comp.spv", bindings, ARRAY_SIZE(bindings));
 		CreateDescriptorSet();
+		CreateSurface(m_image.MappedData(), width, height);
 	}
 
 	void MandelImage::Resize(int width, int height)
@@ -76,6 +77,7 @@ namespace foldscape
 		{
 			ClearDescriptorResources();
 			CreateDescriptorSet();
+			CreateSurface(m_image.MappedData(), width, height);
 		}
 		m_pzParams.resolution = {width, height};
 	}

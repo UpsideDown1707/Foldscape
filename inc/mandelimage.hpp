@@ -13,7 +13,6 @@ namespace foldscape
 			PanAndZoomParams pzParams;
 			uint32_t maxIters;
 		};
-
 	
 	private:
 		vk::UniformBuffer m_parameterBuffer;

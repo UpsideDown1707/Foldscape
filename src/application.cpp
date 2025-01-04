@@ -9,8 +9,7 @@ namespace foldscape
 	void Application::Activate(GtkApplication* gtkApp)
 	{
 		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape", WIDTH, HEIGHT);
-		m_mandelImage = std::make_unique<MandelImage>(*m_vulkan, *this, WIDTH, HEIGHT);
-		m_surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_mandelImage->MappedImage()), CAIRO_FORMAT_ARGB32, WIDTH, HEIGHT, WIDTH * 4);
+		m_imageControl = std::make_unique<MandelImage>(*m_vulkan, *this, WIDTH, HEIGHT);
 
 		m_drawingArea = gtk_drawing_area_new();
 		
@@ -58,13 +57,7 @@ namespace foldscape
 	{
 		try
 		{
-			if (m_surface)
-			{
-				cairo_surface_destroy(m_surface);
-				m_surface = nullptr;
-			}
-			m_mandelImage->Resize(width, height);
-			m_surface = cairo_image_surface_create_for_data(reinterpret_cast<uint8_t*>(m_mandelImage->MappedImage()), CAIRO_FORMAT_ARGB32, width, height, width * 4);
+			m_imageControl->Resize(width, height);
 		}
 		catch (const std::exception& ex)
 		{
@@ -74,29 +67,29 @@ namespace foldscape
 
 	void Application::Draw(cairo_t* cr, int width, int height)
 	{
-		m_mandelImage->Render();
-		cairo_set_source_surface(cr, m_surface, 0, 0);
+		m_imageControl->Render();
+		cairo_set_source_surface(cr, m_imageControl->Surface(), 0, 0);
 		cairo_paint(cr);
 	}
 
 	void Application::DragBegin(double2 p)
 	{
-		m_mandelImage->DragBegin(p);
+		m_imageControl->DragBegin(p);
 	}
 	
 	void Application::DragUpdate(double2 dp)
 	{
-		m_mandelImage->DragUpdate(dp);
+		m_imageControl->DragUpdate(dp);
 	}
 
 	void Application::CursorMotion(double2 p)
 	{
-		m_mandelImage->CursorMotion(p);
+		m_imageControl->CursorMotion(p);
 	}
 	
 	void Application::Zoom(double d)
 	{
-		m_mandelImage->Zoom(d);
+		m_imageControl->Scroll(d);
 	}
 
 	Application::Application()
@@ -105,12 +98,7 @@ namespace foldscape
 
 	Application::~Application()
 	{
-		if (m_surface)
-		{
-			cairo_surface_destroy(m_surface);
-			m_surface = nullptr;
-		}
-		m_mandelImage.reset();
+		m_imageControl.reset();
 		m_vulkan.reset();
 	}
 

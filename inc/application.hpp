@@ -1,7 +1,6 @@
 #pragma once
 
 #include "mandelimage.hpp"
-#include <gtk/gtk.h>
 #include <memory>
 
 namespace foldscape
@@ -9,9 +8,8 @@ namespace foldscape
 	class Application : public IDrawContext
 	{
 		GtkWidget* m_drawingArea;
-		cairo_surface_t* m_surface;
 		std::unique_ptr<vk::Vulkan> m_vulkan;
-		std::unique_ptr<MandelImage> m_mandelImage;
+		std::unique_ptr<ImageControlBase> m_imageControl;
 	
 	private:
 		void Activate(GtkApplication* gtkApp);
