@@ -9,7 +9,7 @@ namespace foldscape
 	void Application::Activate(GtkApplication* gtkApp)
 	{
 		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape", WIDTH, HEIGHT);
-		m_imageControl = std::make_unique<MandelImage>(*m_vulkan, *this, WIDTH, HEIGHT);
+		m_imageControl = std::make_unique<NebulaImage>(*m_vulkan, *this, WIDTH, HEIGHT);
 
 		m_drawingArea = gtk_drawing_area_new();
 		

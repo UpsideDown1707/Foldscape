@@ -39,6 +39,62 @@ namespace foldscape::vk
 		ThrowIfFailed(vkMapMemory(m_vulkan.Device(), m_memory, 0, VK_WHOLE_SIZE, 0, &m_mappedData));
 	}
 
+	StorageBufferResources::StorageBufferResources(const Vulkan& vulkan)
+		: m_vulkan{vulkan}
+		, m_buffer{VK_NULL_HANDLE}
+		, m_memory{VK_NULL_HANDLE}
+	{}
+
+	StorageBufferResources::~StorageBufferResources()
+	{
+		ClearResources();
+	}
+
+	void StorageBufferResources::ClearResources()
+	{
+		SAFE_DESTROY(vkDestroyBuffer, m_buffer, m_vulkan.Device(), m_buffer, m_vulkan.Allocator());
+		SAFE_DESTROY(vkFreeMemory, m_memory, m_vulkan.Device(), m_memory, m_vulkan.Allocator());
+	}
+
+	void StorageBuffer::CreateBuffer()
+	{
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = m_size;
+		bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		ThrowIfFailed(vkCreateBuffer(m_vulkan.Device(), &bufferInfo, m_vulkan.Allocator(), &m_buffer));
+
+		VkMemoryRequirements memRequirements{};
+		vkGetBufferMemoryRequirements(m_vulkan.Device(), m_buffer, &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = m_vulkan.FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		ThrowIfFailed(vkAllocateMemory(m_vulkan.Device(), &allocInfo, m_vulkan.Allocator(), &m_memory));
+		ThrowIfFailed(vkBindBufferMemory(m_vulkan.Device(), m_buffer, m_memory, 0));
+	}
+
+	StorageBuffer::StorageBuffer(const Vulkan& vulkan, VkDeviceSize size)
+		: StorageBufferResources(vulkan)
+		, m_size{size}
+	{
+		CreateBuffer();
+	}
+
+	bool StorageBuffer::Resize(VkDeviceSize size)
+	{
+		if (size > 0 && size != m_size)
+		{
+			ClearResources();
+			m_size = size;
+			CreateBuffer();
+			return true;
+		}
+		return false;
+	}
+
 	TexelBufferResources::TexelBufferResources(const Vulkan& vulkan)
 		: m_vulkan{vulkan}
 		, m_buffer{VK_NULL_HANDLE}

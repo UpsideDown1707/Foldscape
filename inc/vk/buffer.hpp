@@ -30,6 +30,35 @@ namespace foldscape::vk
 		inline T MappedData() const { return reinterpret_cast<T>(m_mappedData); }
 	};
 
+	class StorageBufferResources
+	{
+	protected:
+		const Vulkan& m_vulkan;
+		VkBuffer m_buffer;
+		VkDeviceMemory m_memory;
+	
+	protected:
+		explicit StorageBufferResources(const Vulkan& vulkan);
+		~StorageBufferResources();
+		void ClearResources();
+	};
+
+	class StorageBuffer : private StorageBufferResources
+	{
+		VkDeviceSize m_size;
+
+	private:
+		void CreateBuffer();
+
+	public:
+		StorageBuffer(const Vulkan& vulkan, VkDeviceSize size);
+
+		bool Resize(VkDeviceSize size);
+
+		inline VkBuffer Buffer() const { return m_buffer; }
+		inline VkDeviceSize Size() const { return m_size; }
+	};
+
 	class TexelBufferResources
 	{
 	protected:

@@ -52,6 +52,7 @@ namespace foldscape
 	MandelImage::MandelImage(vk::Vulkan& vulkan, IDrawContext& drawContext, int width, int height)
 		: ShaderImage(vulkan, width, height)
 		, PanAndZoom2D(drawContext)
+		, m_pipeline(vulkan)
 		, m_parameterBuffer(vulkan, sizeof(ShaderParameters))
 	{
 		m_pzParams.center = {-0.5, 0.0};
@@ -66,19 +67,21 @@ namespace foldscape
 		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		bindings[1].descriptorCount = 1;
 		bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-		CreatePipeline("shader_comp.spv", bindings, ARRAY_SIZE(bindings));
+		CreatePipelineLayout(bindings, ARRAY_SIZE(bindings));
+		m_pipeline.Init(m_pipelineLayout, "mandel_comp.spv");
 		CreateDescriptorSet();
 		CreateSurface(m_image.MappedData(), width, height);
 	}
 
 	void MandelImage::Resize(int width, int height)
 	{
+		SafeDestroySurface();
 		if (m_image.Resize(width, height))
 		{
 			ClearDescriptorResources();
 			CreateDescriptorSet();
-			CreateSurface(m_image.MappedData(), width, height);
 		}
+		CreateSurface(m_image.MappedData(), width, height);
 		m_pzParams.resolution = {width, height};
 	}
 
@@ -90,7 +93,9 @@ namespace foldscape
 		vkResetCommandBuffer(cmdBuffer, 0);
 
 		ShaderParameters* params = m_parameterBuffer.MappedData<ShaderParameters*>();
-		params->pzParams = m_pzParams;
+		params->center = m_pzParams.center;
+		params->zoom = m_pzParams.zoom;
+		params->resolution = m_pzParams.resolution;
 		params->maxIters = 256;
 
 		VkCommandBufferBeginInfo beginInfo{};
@@ -98,7 +103,7 @@ namespace foldscape
 		ThrowIfFailed(vkBeginCommandBuffer(cmdBuffer, &beginInfo));
 		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
 		vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, nullptr);
-		vkCmdDispatch(cmdBuffer, (m_image.Width() + 15) / 16, (m_image.Height() + 15) / 16, 1);
+		vkCmdDispatch(cmdBuffer, (m_image.Width() + 7) / 8, (m_image.Height() + 7) / 8, 1);
 		ThrowIfFailed(vkEndCommandBuffer(m_vulkan.CommandBuffer()));
 
 		VkSubmitInfo submitInfo{};

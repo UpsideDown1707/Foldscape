@@ -4,17 +4,16 @@
 
 namespace foldscape
 {
-	struct double2
+	template <typename T>
+	struct vec2
 	{
-		double x;
-		double y;
+		T x;
+		T y;
 	};
 
-	struct int2
-	{
-		int x;
-		int y;
-	};
+	using float2 = vec2<float>;
+	using double2 = vec2<double>;
+	using int2 = vec2<int>;
 
 	class ImageControlBase
 	{

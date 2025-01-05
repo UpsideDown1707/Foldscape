@@ -1,0 +1,34 @@
+#version 460
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0) buffer CountsOut
+{
+	uint countsOut[];
+};
+
+layout(binding = 1) uniform Parameters
+{
+	vec2 center;
+	float zoom;
+	ivec2 resolution;
+	uvec3 maxIters;
+	vec3 colorMultipliers;
+	uint firstDrawnPointIter;
+	float pixelMultiplier;
+};
+
+layout(rgba8, binding = 2) uniform imageBuffer imgOut;
+
+void main() 
+{
+	//if (gl_GlobalInvocationID.x < resolution.x * resolution.y)
+	{
+		uint idx = gl_GlobalInvocationID.x;
+		vec4 color = vec4(vec3(countsOut[idx * 3 + 0], countsOut[idx * 3 + 1], countsOut[idx * 3 + 2]) * colorMultipliers, 1);
+		countsOut[idx * 3 + 0] = 0;
+		countsOut[idx * 3 + 1] = 0;
+		countsOut[idx * 3 + 2] = 0;
+		imageStore(imgOut, int(idx), color.zyxw);
+	}
+}

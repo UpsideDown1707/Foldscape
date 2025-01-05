@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mandelimage.hpp"
+#include "nebulaimage.hpp"
 #include <memory>
 
 namespace foldscape

@@ -9,7 +9,6 @@ namespace foldscape
 	protected:
 		vk::Vulkan& m_vulkan;
 		VkPipelineLayout m_pipelineLayout;
-		VkPipeline m_pipeline;
 		VkFence m_fence;
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkDescriptorPool m_descriptorPool;
@@ -27,7 +26,7 @@ namespace foldscape
 		vk::TexelBuffer m_image;
 	
 	protected:
-		void CreatePipeline(const char* shaderFilename, const VkDescriptorSetLayoutBinding bindings[], uint32_t bindingCount);
+		void CreatePipelineLayout(const VkDescriptorSetLayoutBinding bindings[], uint32_t bindingCount);
 
 	public:
 		ShaderImage(vk::Vulkan& vulkan, int width, int height);

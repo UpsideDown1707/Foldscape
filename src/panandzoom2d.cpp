@@ -41,7 +41,7 @@ namespace foldscape
 	void PanAndZoom2D::Scroll(double delta)
 	{
 		const std::complex<double> zoomCenter = ToCoords(m_cursor);
-		m_pzParams.zoom *= delta > 0 ? 1.25f : 0.8f;
+		m_pzParams.zoom *= delta > 0 ? 1.25 : 0.8;
 		const double2 p = ToScreen(zoomCenter);
 		m_pzParams.center = m_pzParams.center + std::complex<double>{
 			(p.x - m_cursor.x) / (m_pzParams.resolution.x - 1.0) * 2.0 * m_pzParams.resolution.x / m_pzParams.resolution.y * m_pzParams.zoom,

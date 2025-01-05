@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vk/computepipeline.hpp"
 #include "shaderimage.hpp"
 #include "panandzoom2d.hpp"
 #include <complex>
@@ -8,13 +9,16 @@ namespace foldscape
 {
 	class MandelImage : public ShaderImage, public PanAndZoom2D
 	{
-		struct alignas(16) ShaderParameters
+		struct ShaderParameters
 		{
-			PanAndZoomParams pzParams;
+			std::complex<double> center;
+			double zoom;
+			int2 resolution;
 			uint32_t maxIters;
 		};
 	
 	private:
+		vk::ComputePipeline m_pipeline;
 		vk::UniformBuffer m_parameterBuffer;
 
 	private:

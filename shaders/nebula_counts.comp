@@ -1,0 +1,94 @@
+#version 460
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(binding = 0) buffer CountsOut
+{
+	uint countsOut[];
+};
+
+layout(binding = 1) uniform Parameters
+{
+	vec2 center;
+	float zoom;
+	ivec2 resolution;
+	uvec3 maxIters;
+	vec3 colorMultipliers;
+	uint firstDrawnPointIter;
+	float pixelMultiplier;
+};
+
+vec2 Function(vec2 z, vec2 c)
+{
+	return vec2(z.x * z.x - z.y * z.y, 2 * z.x * z.y) + c;
+}
+
+bool IsPartOfSet(vec2 coord)
+{
+	vec2 z = vec2(0, 0);
+	vec2 c = coord;
+	uint iterCount = max(max(maxIters.x, maxIters.y), maxIters.z);
+	for (uint i = 0; i < iterCount; ++i)
+	{
+		z = Function(z, c);
+		if (length(z) > 4)
+			return false;
+	}
+	return true;
+}
+
+int IndexFromCoord(vec2 z)
+{
+	z = (z - center) / zoom;
+	z.x *= float(resolution.y) / float(resolution.x);
+	z.y = -z.y;
+	z = (z + 1) * 0.5 * (resolution - 1);
+	ivec2 pixel = ivec2(z);
+	if (pixel.x < 0)
+		return -1;
+	if (pixel.x >= resolution.x)
+		return -1;
+	if (pixel.y < 0)
+		return -1;
+	if (pixel.y >= resolution.y)
+		return -1;
+	return pixel.x + pixel.y * resolution.x;
+}
+
+void main() 
+{
+	if (gl_GlobalInvocationID.x < resolution.x && gl_GlobalInvocationID.y < resolution.y)
+	{
+		vec2 uv = vec2(float(gl_GlobalInvocationID.x), float(gl_GlobalInvocationID.y)) / (resolution - 1) * 2 - 1;
+		vec2 coord = vec2(uv.x * float(resolution.x) / float(resolution.y), -uv.y) * zoom + center;
+		float pixelDelta = zoom / float(resolution.y - 1);
+		for (float y = 0; y < pixelMultiplier; ++y)
+		{
+			for (float x = 0; x < pixelMultiplier; ++x)
+			{
+				vec2 coordp = coord + (vec2(x, y) / pixelMultiplier + ((1 - pixelMultiplier) / (2 * pixelMultiplier))) * pixelDelta;
+				if (!IsPartOfSet(coordp))
+				{
+					vec2 z = vec2(0, 0);
+					vec2 c = coordp;
+					uint iterCount = max(max(maxIters.x, maxIters.y), maxIters.z);
+					for (uint i = 0; i < iterCount; ++i)
+					{
+						z = Function(z, c);
+						if (length(z) > 4)
+							break;
+						if (i < firstDrawnPointIter)
+							continue;
+						int idx = IndexFromCoord(z);
+						if (i < maxIters.x)
+							atomicAdd(countsOut[idx * 3 + 0], 1);
+						if (i < maxIters.y)
+							atomicAdd(countsOut[idx * 3 + 1], 1);
+						if (i < maxIters.z)
+							atomicAdd(countsOut[idx * 3 + 2], 1);
+					}
+				}
+			}
+		}
+	}
+}

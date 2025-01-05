@@ -5,7 +5,7 @@
 
 namespace foldscape
 {
-	struct alignas(16) PanAndZoomParams
+	struct PanAndZoomParams
 	{
 		std::complex<double> center;
 		double zoom;
