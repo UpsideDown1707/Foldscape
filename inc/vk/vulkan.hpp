@@ -44,13 +44,6 @@ namespace foldscape::vk
 
 	class Vulkan : private VulkanResources
 	{
-		struct ShaderParams
-		{
-			int width;
-			int height;
-		};
-
-	private:
 		VkQueue m_queue;
 		PhysicalDevice m_physicalDevice;
 
@@ -62,7 +55,7 @@ namespace foldscape::vk
 		void CreateCmdBuffer();
 
 	public:
-		Vulkan(const char* name, int width, int height);
+		Vulkan(const char* name);
 
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 

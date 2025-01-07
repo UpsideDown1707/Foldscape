@@ -64,7 +64,7 @@ namespace foldscape
 
 	NebulaImage::NebulaImage(vk::Vulkan& vulkan, IDrawContext& drawContext, int width, int height)
 		: ShaderImage(vulkan, width, height)
-		, PanAndZoom2D(drawContext)
+		, PanAndZoom2D(drawContext, width, height)
 		, m_countsPipeline(vulkan)
 		, m_colorPipeline(vulkan)
 		, m_countsBuffer(vulkan, width * height * 3 * sizeof(uint32_t))

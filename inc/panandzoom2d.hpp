@@ -31,7 +31,7 @@ namespace foldscape
 		double2 ToScreen(std::complex<double> p) const;
 
 	public:
-		explicit PanAndZoom2D(IDrawContext& drawContext);
+		explicit PanAndZoom2D(IDrawContext& drawContext, int width, int height);
 		virtual void DragBegin(double2 p) override;
 		virtual void DragUpdate(double2 dp) override;
 		virtual void Scroll(double delta) override;

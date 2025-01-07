@@ -5,13 +5,23 @@ namespace foldscape
 {
 	static constexpr int WIDTH = 1280;
 	static constexpr int HEIGHT = 800;
+	static constexpr int MENU_WIDTH = 300;
 
 	void Application::Activate(GtkApplication* gtkApp)
 	{
-		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape", WIDTH, HEIGHT);
-		m_imageControl = std::make_unique<NebulaImage>(*m_vulkan, *this, WIDTH, HEIGHT);
+		m_vulkan = std::make_unique<vk::Vulkan>("Foldscape");
+		m_imageControl = std::make_unique<MandelImage>(*m_vulkan, *this, WIDTH - MENU_WIDTH, HEIGHT);
 
 		m_drawingArea = gtk_drawing_area_new();
+
+		m_menu = gtk_notebook_new();
+		gtk_notebook_append_page(GTK_NOTEBOOK(m_menu), gtk_scrolled_window_new(), gtk_label_new("Mandelbrot"));
+		gtk_notebook_append_page(GTK_NOTEBOOK(m_menu), gtk_scrolled_window_new(), gtk_label_new("Nebulabrot"));
+		m_tabSwitchId = g_signal_connect(m_menu, "switch-page", G_CALLBACK(static_cast<void(*)(GtkNotebook*, GtkWidget*, guint, Application*)>(
+			[](GtkNotebook*, GtkWidget*, guint page, Application* app){
+				app->ChangeTab(page);
+			}
+		)), this);
 		
 		g_signal_connect(GTK_DRAWING_AREA(m_drawingArea), "resize", G_CALLBACK(static_cast<void(*)(GtkDrawingArea*, gint, gint, Application*)>(
 			[](GtkDrawingArea*, gint width, gint height, Application* app){
@@ -45,12 +55,33 @@ namespace foldscape
 		})), this);
 		gtk_widget_add_controller(m_drawingArea, zoomController);
 
+		GtkWidget* paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+		gtk_paned_set_start_child(GTK_PANED(paned), m_menu);
+		gtk_paned_set_end_child(GTK_PANED(paned), m_drawingArea);
+		gtk_paned_set_wide_handle(GTK_PANED(paned), true);
+		gtk_paned_set_position(GTK_PANED(paned), MENU_WIDTH);
+
 		GtkWidget* window = gtk_application_window_new(gtkApp);
 		gtk_window_set_title(GTK_WINDOW(window), "Foldscape");
 		gtk_window_set_default_size(GTK_WINDOW(window), WIDTH, HEIGHT);
-		gtk_window_set_child(GTK_WINDOW(window), m_drawingArea);
+		gtk_window_set_child(GTK_WINDOW(window), paned);
 
 		gtk_window_present(GTK_WINDOW(window));
+	}
+
+	void Application::ChangeTab(uint32_t page)
+	{
+		m_imageControl.reset();
+		switch (page)
+		{
+			case 0:
+				m_imageControl = std::make_unique<MandelImage>(*m_vulkan, *this, gtk_widget_get_width(m_drawingArea), gtk_widget_get_height(m_drawingArea));
+				break;
+			case 1:
+				m_imageControl = std::make_unique<NebulaImage>(*m_vulkan, *this, gtk_widget_get_width(m_drawingArea), gtk_widget_get_height(m_drawingArea));
+				break;
+		}
+		RequestRender();
 	}
 
 	void Application::Resize(int width, int height)
@@ -94,10 +125,13 @@ namespace foldscape
 
 	Application::Application()
 		: m_drawingArea{nullptr}
+		, m_menu{nullptr}
+		, m_tabSwitchId{}
 	{}
 
 	Application::~Application()
 	{
+		g_signal_handler_disconnect(m_menu, m_tabSwitchId);
 		m_imageControl.reset();
 		m_vulkan.reset();
 	}

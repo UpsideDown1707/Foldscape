@@ -51,7 +51,7 @@ namespace foldscape
 
 	MandelImage::MandelImage(vk::Vulkan& vulkan, IDrawContext& drawContext, int width, int height)
 		: ShaderImage(vulkan, width, height)
-		, PanAndZoom2D(drawContext)
+		, PanAndZoom2D(drawContext, width, height)
 		, m_pipeline(vulkan)
 		, m_parameterBuffer(vulkan, sizeof(ShaderParameters))
 	{

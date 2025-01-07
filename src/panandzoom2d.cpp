@@ -19,11 +19,13 @@ namespace foldscape
 		};
 	}
 
-	PanAndZoom2D::PanAndZoom2D(IDrawContext& drawContext)
+	PanAndZoom2D::PanAndZoom2D(IDrawContext& drawContext, int width, int height)
 		: m_drawContext{drawContext}
 		, m_dragTimeCenter{}
 		, m_pzParams{}
-	{}
+	{
+		m_pzParams.resolution = {width, height};
+	}
 
 	void PanAndZoom2D::DragBegin(double2 p)
 	{

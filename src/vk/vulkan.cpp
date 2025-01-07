@@ -237,7 +237,7 @@ namespace foldscape::vk
 		ThrowIfFailed(vkAllocateCommandBuffers(m_device, &allocInfo, &m_commandBuffer));
 	}
 
-	Vulkan::Vulkan(const char* name, int width, int height)
+	Vulkan::Vulkan(const char* name)
 		: m_queue{VK_NULL_HANDLE}
 		, m_physicalDevice{}
 	{
